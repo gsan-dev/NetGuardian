@@ -1,0 +1,10 @@
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+pydantic>=2.6,<3.0
+websockets>=12.0,<14.0
+python-dotenv>=1.0,<2.0
+
+# Autenticación del panel (mejora futura ya integrada)
+pyjwt>=2.8,<3.0
+bcrypt>=4.1,<5.0
+python-multipart>=0.0.9
