@@ -103,44 +103,70 @@ Los IDS tradicionales (Snort, Suricata) detectan ataques comparando el tráfico 
 
 ## 📁 Estructura del repositorio
 
+La estructura creció un poco respecto al plan inicial: `common/` apareció en la Fase 4 para que sensor y backend compartan configuración, base de datos y severidad de alertas sin duplicar código, y varios ficheros de la sección de mejoras futuras (auth, bloqueo automático, informes PDF) se integraron desde el principio en vez de dejarse para el final.
+
 ```
 netguardian/
 ├── README.md
-├── .gitignore
+├── LICENSE
+├── .gitignore / .dockerignore
 ├── docker-compose.yml
+├── .env.example                # referencia de toda la configuración
+├── requirements-dev.txt        # sensor + backend + pytest, para tests
+│
+├── common/                     # compartido por sensor y backend
+│   ├── config.py                # settings desde .env (única fuente de verdad)
+│   ├── db.py                    # Repository (SQLite hoy, InfluxDB como stub futuro)
+│   ├── severity.py               # orden de severidad none < low < medium < high
+│   └── reports.py                # generación del PDF semanal
+│
 ├── sensor/
-│   ├── main.py
-│   ├── discovery.py        # descubre servicios/procesos activos
-│   ├── capture.py          # captura de tráfico con Scapy
-│   ├── features.py         # extracción de features por ventana
-│   ├── model.py            # entrenamiento/inferencia Isolation Forest
-│   ├── notifier.py         # envío de alertas (Telegram/Discord)
+│   ├── main.py                  # orquesta todo lo de abajo en un daemon
+│   ├── discovery.py              # psutil + Docker SDK
+│   ├── capture.py                # captura con Scapy, ventaneo temporal
+│   ├── features.py               # features por ventana y por IP
+│   ├── model.py                  # Isolation Forest global + per-IP
+│   ├── notifier.py               # alertas a Telegram/Discord
+│   ├── blocker.py                # auto-bloqueo de IPs vía iptables
+│   ├── evaluate.py               # smoke test del modelo con datos sintéticos
+│   ├── Dockerfile
 │   └── requirements.txt
+│
 ├── backend/
-│   ├── main.py              # FastAPI app
+│   ├── main.py                   # FastAPI app + lifespan + poller WebSocket
+│   ├── auth.py                    # login/JWT
+│   ├── ws_manager.py              # gestor de conexiones WebSocket
 │   ├── routes/
 │   │   ├── services.py
 │   │   ├── alerts.py
-│   │   └── ws.py
-│   ├── db.py
+│   │   ├── traffic.py
+│   │   ├── ws.py
+│   │   ├── auth_routes.py
+│   │   └── reports_routes.py
+│   ├── Dockerfile
 │   └── requirements.txt
+│
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── LoginForm.jsx
 │   │   │   ├── ServicesPanel.jsx
 │   │   │   ├── TrafficChart.jsx
 │   │   │   └── AlertsFeed.jsx
+│   │   ├── api.js                 # cliente REST/WS + manejo del JWT
 │   │   ├── App.jsx
-│   │   └── main.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── Dockerfile / nginx.conf
 │   ├── package.json
 │   └── vite.config.js
+│
 ├── data/
-│   └── models/               # modelos entrenados serializados
-├── tests/
-│   ├── test_features.py
-│   └── test_model.py
+│   └── models/                    # modelos entrenados serializados (gitignored)
+├── reports/                       # PDFs semanales generados (gitignored)
+├── tests/                         # pytest de sensor + backend + common
 └── docs/
-    └── capturas/              # screenshots para el README final
+    └── capturas/                  # screenshots reales del panel
 ```
 
 ---
@@ -150,57 +176,57 @@ netguardian/
 La idea es que cada fase termine con un commit funcional y comprobable — nada de un único commit gigante al final. Esto también te da una buena historia que contar en la entrevista ("empecé por X, luego añadí Y").
 
 ### Fase 0 — Setup inicial
-- [ ] `chore: inicializar repositorio con estructura de carpetas`
-- [ ] `chore: añadir .gitignore, README inicial y licencia`
-- [ ] `chore: configurar entorno virtual y requirements.txt base`
+- [x] `chore: inicializar repositorio con estructura de carpetas`
+- [x] `chore: añadir .gitignore, README inicial y licencia`
+- [x] `chore: configurar entorno virtual y requirements.txt base`
 
 ### Fase 1 — Descubrimiento de servicios
-- [ ] `feat: descubridor de procesos y puertos activos con psutil`
-- [ ] `feat: integración con Docker SDK para listar contenedores activos`
-- [ ] `test: pruebas unitarias del módulo de descubrimiento`
+- [x] `feat: descubridor de procesos y puertos activos con psutil`
+- [x] `feat: integración con Docker SDK para listar contenedores activos`
+- [x] `test: pruebas unitarias del módulo de descubrimiento`
 
 ### Fase 2 — Captura de tráfico
-- [ ] `feat: captura básica de paquetes con Scapy`
-- [ ] `feat: agrupación de paquetes en ventanas temporales`
-- [ ] `refactor: extraer configuración de interfaz de red a variables de entorno`
+- [x] `feat: captura básica de paquetes con Scapy`
+- [x] `feat: agrupación de paquetes en ventanas temporales`
+- [x] `refactor: extraer configuración de interfaz de red a variables de entorno`
 
 ### Fase 3 — Extracción de features y modelo
-- [ ] `feat: cálculo de features por ventana (nº conexiones, IPs, puertos, bytes)`
-- [ ] `feat: entrenamiento inicial de Isolation Forest con datos normales`
-- [ ] `feat: pipeline de inferencia en tiempo real sobre nuevas ventanas`
-- [ ] `test: pruebas del pipeline de features y del modelo`
+- [x] `feat: cálculo de features por ventana (nº conexiones, IPs, puertos, bytes)`
+- [x] `feat: entrenamiento inicial de Isolation Forest con datos normales`
+- [x] `feat: pipeline de inferencia en tiempo real sobre nuevas ventanas`
+- [x] `test: pruebas del pipeline de features y del modelo`
 
 ### Fase 4 — Persistencia
-- [ ] `feat: modelo de base de datos SQLite para servicios, tráfico y alertas`
-- [ ] `feat: capa de acceso a datos (repositorio/DAO)`
+- [x] `feat: modelo de base de datos SQLite para servicios, tráfico y alertas`
+- [x] `feat: capa de acceso a datos (repositorio/DAO)`
 
 ### Fase 5 — Backend API
-- [ ] `feat: endpoints REST para servicios activos y alertas`
-- [ ] `feat: endpoint WebSocket para streaming en tiempo real`
-- [ ] `docs: documentación automática con Swagger/FastAPI`
+- [x] `feat: endpoints REST para servicios activos y alertas`
+- [x] `feat: endpoint WebSocket para streaming en tiempo real`
+- [x] `docs: documentación automática con Swagger/FastAPI`
 
 ### Fase 6 — Notificaciones
-- [ ] `feat: integración con bot de Telegram para alertas`
-- [ ] `feat: reglas configurables de cuándo notificar`
+- [x] `feat: integración con bot de Telegram para alertas`
+- [x] `feat: reglas configurables de cuándo notificar`
 
 ### Fase 7 — Frontend
-- [ ] `feat: scaffold de React con Vite`
-- [ ] `feat: panel de servicios activos con auto-refresh`
-- [ ] `feat: gráfico de tráfico en tiempo real con Recharts`
-- [ ] `feat: feed de alertas en vivo vía WebSocket`
-- [ ] `style: pulido visual del dashboard`
+- [x] `feat: scaffold de React con Vite`
+- [x] `feat: panel de servicios activos con auto-refresh`
+- [x] `feat: gráfico de tráfico en tiempo real con Recharts`
+- [x] `feat: feed de alertas en vivo vía WebSocket`
+- [x] `style: pulido visual del dashboard`
 
 ### Fase 8 — Dockerización y despliegue
-- [ ] `feat: Dockerfile para sensor, backend y frontend`
-- [ ] `feat: docker-compose.yml para levantar todo el stack`
-- [ ] `docs: instrucciones de despliegue en homelab`
+- [x] `feat: Dockerfile para sensor, backend y frontend`
+- [x] `feat: docker-compose.yml para levantar todo el stack`
+- [x] `docs: instrucciones de despliegue en homelab`
 
 ### Fase 9 — Cierre y documentación final
-- [ ] `docs: capturas de pantalla del panel en funcionamiento`
-- [ ] `docs: sección de resultados y métricas del modelo`
-- [ ] `chore: limpieza final de código y comentarios`
+- [x] `docs: capturas de pantalla del panel en funcionamiento`
+- [x] `docs: sección de resultados y métricas del modelo`
+- [x] `chore: limpieza final de código y comentarios`
 
-> 💡 Consejo: haz cada checkbox un commit real, aunque sea pequeño. Un historial de 30-40 commits con mensajes claros dice mucho más de ti en una entrevista técnica que 3 commits enormes.
+> ✅ Las 9 fases están completas: el historial de commits de este repo sigue este roadmap fase a fase, cada uno con su propio commit descriptivo.
 
 ---
 
@@ -216,8 +242,8 @@ La idea es que cada fase termine con un commit funcional y comprobable — nada 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/TU-USUARIO/netguardian.git
-cd netguardian
+git clone https://github.com/gsan-dev/NetGuardian.git
+cd NetGuardian
 ```
 
 ### 2. Crear el entorno virtual del sensor y del backend
