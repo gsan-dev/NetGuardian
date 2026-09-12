@@ -237,15 +237,25 @@ cd ..
 
 ### 4. Variables de entorno
 
-Crea un archivo `.env` en la raíz con:
+Copia la plantilla y ajústala a tu red:
+
+```bash
+cp .env.example .env
+```
+
+`.env.example` es la referencia siempre actualizada de toda la configuración disponible (sensor, base de datos, modelo, notificaciones, auto-bloqueo, auth y backend). Como mínimo revisa:
 
 ```env
-NETWORK_INTERFACE=eth0
-DB_PATH=./data/netguardian.db
-TELEGRAM_BOT_TOKEN=tu_token_aqui
-TELEGRAM_CHAT_ID=tu_chat_id
+NETWORK_INTERFACE=eth0        # interfaz real de tu máquina/homelab (ip a / ipconfig)
 WINDOW_SECONDS=30
+DB_PATH=./data/netguardian.db
+TELEGRAM_BOT_TOKEN=           # opcional, para alertas por Telegram
+TELEGRAM_CHAT_ID=
+AUTH_SECRET_KEY=              # cámbialo por una cadena larga y aleatoria
+ADMIN_PASSWORD_HASH=          # genera el hash con el comando que indica .env.example
 ```
+
+Genera el frontend/.env con la URL del backend (`cp frontend/.env.example frontend/.env`) si el backend no corre en `localhost:8000`.
 
 ---
 
@@ -266,6 +276,8 @@ uvicorn main:app --reload --port 8000
 cd frontend
 npm run dev
 ```
+
+Inicia sesión con `ADMIN_USERNAME` y la contraseña cuyo hash pusiste en `ADMIN_PASSWORD_HASH` (o pon `AUTH_ENABLED=false` en `.env` para desarrollo sin login).
 
 Accede al panel en `http://localhost:5173`.
 
@@ -288,6 +300,16 @@ Para detener todo:
 ```bash
 docker-compose down
 ```
+
+### 🏠 Despliegue en homelab (24/7)
+
+- **Copia `.env.example` a `.env`** antes de levantar el stack y ajusta al menos `NETWORK_INTERFACE` (mira la interfaz real con `ip a` en el host) y `AUTH_SECRET_KEY`/`ADMIN_PASSWORD_HASH` si vas a exponer el panel.
+- **`network_mode: host` en el sensor solo funciona en Linux.** Es imprescindible para que Scapy vea el tráfico real de tu red en vez del tráfico interno del contenedor. En Docker Desktop (Windows/macOS) el sensor arrancará pero no capturará tráfico útil del host — para desarrollar en esas plataformas, ejecuta el sensor en modo local (Opción A) contra tu interfaz real.
+- **Arranque automático al reiniciar el host:** `docker-compose` ya usa `restart: unless-stopped`, así que basta con que Docker arranque con el sistema (`systemctl enable docker` en la mayoría de distros).
+- **Persistencia:** `./data` (base SQLite + modelos entrenados) y `./reports` (PDFs semanales) están montados como volúmenes — sobreviven a `docker-compose down` y a reconstrucciones de imagen. Haz backup periódico de `./data/netguardian.db` si te importa el histórico.
+- **Exponer el panel fuera de tu LAN:** el JWT del panel (`AUTH_ENABLED=true`) protege el acceso, pero viaja sin cifrar si no añades HTTPS. Pon un reverse proxy con TLS delante (Caddy, Traefik o nginx con Let's Encrypt) en vez de exponer el puerto 5173/8000 directamente a Internet.
+- **Logs:** `docker-compose logs -f sensor` para ver alertas y anomalías en vivo, o `docker-compose logs -f backend` para ver la actividad de la API/WebSocket.
+- **Actualizar tras un `git pull`:** `docker-compose up --build -d` reconstruye solo las imágenes cuyo contexto cambió.
 
 ---
 
