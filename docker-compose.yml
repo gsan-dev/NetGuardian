@@ -22,11 +22,13 @@ services:
     # Docker Desktop (Windows/Mac) el sensor no capturará tráfico del
     # host real por limitaciones de la propia plataforma.
     network_mode: host
+    pid: "host" # necesario para que psutil resuelva nombres de proceso del host
     cap_add:
       - NET_ADMIN # necesario para iptables (bloqueo automático) y captura
       - NET_RAW   # necesario para que Scapy abra sockets raw
     volumes:
       - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro # para listar contenedores del host
     env_file:
       - .env
     restart: unless-stopped
