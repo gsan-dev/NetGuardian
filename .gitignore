@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Data / models (generated at runtime, not committed)
+data/*.db
+data/*.db-journal
+data/models/*.joblib
+data/models/*.pkl
+!data/models/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Reports generados
+reports/*.pdf
+!reports/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Docker
+*.pid
