@@ -130,6 +130,9 @@ class Repository(ABC):
     def list_traffic_windows(self, limit: int = 100, since: float | None = None) -> list[dict[str, Any]]: ...
 
     @abstractmethod
+    def list_traffic_windows_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
     def list_ip_window_stats(self, window_id: int) -> list[dict[str, Any]]: ...
 
     @abstractmethod
@@ -137,6 +140,9 @@ class Repository(ABC):
 
     @abstractmethod
     def list_alerts(self, limit: int = 100, since: float | None = None) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
+    def list_alerts_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]: ...
 
     @abstractmethod
     def mark_alert_notified(self, alert_id: int) -> None: ...
@@ -319,6 +325,14 @@ class SQLiteRepository(Repository):
             rows = [_row_to_dict(r) for r in conn.execute(query, params).fetchall()]
         return list(reversed(rows))
 
+    def list_traffic_windows_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM traffic_windows WHERE id > ? ORDER BY id ASC LIMIT ?",
+                (after_id, limit),
+            ).fetchall()
+            return [_row_to_dict(r) for r in rows]
+
     def list_ip_window_stats(self, window_id: int) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -357,6 +371,14 @@ class SQLiteRepository(Repository):
         params.append(limit)
         with self._connect() as conn:
             return [_row_to_dict(r) for r in conn.execute(query, params).fetchall()]
+
+    def list_alerts_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM alerts WHERE id > ? ORDER BY id ASC LIMIT ?",
+                (after_id, limit),
+            ).fetchall()
+            return [_row_to_dict(r) for r in rows]
 
     def mark_alert_notified(self, alert_id: int) -> None:
         with self._connect() as conn:
@@ -487,6 +509,9 @@ class InfluxDBRepository(Repository):
     def list_traffic_windows(self, limit: int = 100, since: float | None = None) -> list[dict[str, Any]]:
         self._not_implemented()
 
+    def list_traffic_windows_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]:
+        self._not_implemented()
+
     def list_ip_window_stats(self, window_id: int) -> list[dict[str, Any]]:
         self._not_implemented()
 
@@ -494,6 +519,9 @@ class InfluxDBRepository(Repository):
         self._not_implemented()
 
     def list_alerts(self, limit: int = 100, since: float | None = None) -> list[dict[str, Any]]:
+        self._not_implemented()
+
+    def list_alerts_after(self, after_id: int, limit: int = 50) -> list[dict[str, Any]]:
         self._not_implemented()
 
     def mark_alert_notified(self, alert_id: int) -> None:

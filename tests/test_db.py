@@ -178,6 +178,21 @@ def test_traffic_summary_since(repo):
     assert summary["top_anomalous_ips"][0]["src_ip"] == "10.0.0.9"
 
 
+def test_list_traffic_windows_and_alerts_after_id(repo):
+    id1 = repo.insert_traffic_window(_window())
+    id2 = repo.insert_traffic_window(_window())
+
+    after_first = repo.list_traffic_windows_after(id1)
+    assert [w["id"] for w in after_first] == [id2]
+    assert repo.list_traffic_windows_after(id2) == []
+
+    alert_id1 = repo.insert_alert({"severity": "low", "reason": "a"})
+    alert_id2 = repo.insert_alert({"severity": "low", "reason": "b"})
+
+    after_first_alert = repo.list_alerts_after(alert_id1)
+    assert [a["id"] for a in after_first_alert] == [alert_id2]
+
+
 def test_influxdb_repository_raises_not_implemented():
     repo = InfluxDBRepository(url="http://localhost:8086", token="x", org="o", bucket="b")
     with pytest.raises(NotImplementedError):
