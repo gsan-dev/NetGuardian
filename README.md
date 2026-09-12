@@ -14,9 +14,11 @@
 6. [Guía de instalación](#-guía-de-instalación)
 7. [Puesta en marcha](#-puesta-en-marcha)
 8. [Uso del panel](#-uso-del-panel)
-9. [Testing](#-testing)
-10. [Mejoras futuras](#-mejoras-futuras)
-11. [Licencia](#-licencia)
+9. [Capturas](#-capturas)
+10. [Testing](#-testing)
+11. [Resultados y métricas del modelo](#-resultados-y-métricas-del-modelo)
+12. [Mejoras futuras](#-mejoras-futuras)
+13. [Licencia](#-licencia)
 
 ---
 
@@ -323,17 +325,64 @@ Una vez levantado, el panel muestra tres bloques principales, todos actualizados
 
 ---
 
+## 📸 Capturas
+
+Pantalla de login (autenticación JWT del panel):
+
+![Login de NetGuardian](docs/capturas/login.png)
+
+Dashboard con los tres bloques en vivo (servicios, tráfico y alertas) conectado por WebSocket:
+
+![Dashboard de NetGuardian](docs/capturas/dashboard.png)
+
+> Capturadas con el stack real corriendo (backend + frontend), verificando también que no hay errores de consola y que el WebSocket llega a "En vivo". Los paneles aparecen vacíos porque el sensor no estaba capturando tráfico real en el momento de la captura.
+
+---
+
 ## 🧪 Testing
 
-```bash
-# Tests del sensor y del modelo
-cd sensor
-pytest tests/
+Todos los tests viven en `tests/` en la raíz (un único `conftest.py` añade `sensor/`, `backend/` y la raíz del repo a `sys.path`, así que los módulos de cada servicio se importan directamente por nombre):
 
-# Tests del backend
-cd backend
-pytest tests/
+```bash
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+cd tests
+pytest -q
 ```
+
+65 tests cubren descubrimiento de servicios, captura/ventaneo de paquetes, extracción de features, el modelo (Isolation Forest global y per-IP), persistencia SQLite, la API del backend (auth, REST, WebSocket, PDF) y la orquestación completa del sensor.
+
+> **Nota de esta máquina de desarrollo:** los tests de `sensor/model.py` (y, por dependencia, los que instancian `Sensor` de verdad) no se han podido ejecutar aquí porque una directiva de Application Control de Windows bloquea el DLL nativo de scikit-learn (`_tree.pyd`). No es un problema del código: `pip install scikit-learn` se completa sin error, solo falla el `import` en tiempo de ejecución. Si tu máquina no tiene esa restricción, `pytest -q` debería dar 100% en verde. Los tests de orquestación (`test_sensor_main.py`) sortean esto sustituyendo `model.py` por un doble de prueba equivalente, así que sí verifican todo el flujo descubrimiento → ventana → anomalía → alerta → bloqueo.
+
+---
+
+## 📊 Resultados y métricas del modelo
+
+`sensor/evaluate.py` entrena un Isolation Forest con tráfico "normal" sintético y mide cuántas muestras de tres patrones de ataque simulados detecta (escaneo de puertos, flood tipo DDoS, exfiltración de datos), además de la tasa de falsos positivos sobre tráfico normal que no ha visto en el entrenamiento:
+
+```bash
+cd sensor
+python evaluate.py
+```
+
+Es una prueba de humo con patrones exagerados a propósito, no un benchmark: sirve para comprobar que el modelo distingue lo obvio antes de dejarlo correr contra tu tráfico real, no para prometer una tasa de detección concreta en producción (eso depende de tu red, de `MODEL_CONTAMINATION` y de cuánto tráfico normal haya visto el modelo antes de evaluarse).
+
+Por la misma directiva de Windows mencionada en la sección de Testing, no se ha podido ejecutar este script en esta máquina para pegar aquí una salida real. Si lo ejecutas en la tuya, verás algo con esta forma:
+
+```
+=== NetGuardian — evaluación del modelo con tráfico sintético ===
+
+Falsos positivos sobre tráfico normal: X/200 (X.X%)
+
+Detección por tipo de ataque simulado:
+  port_scan      XX/50 (XX.X%)
+  ddos_flood     XX/50 (XX.X%)
+  exfiltration   XX/50 (XX.X%)
+```
+
+La métrica que más importa en el día a día no es esta, sino la que ves en el propio panel: cuántas alertas reales genera tu red durante una semana normal (para ajustar `MODEL_CONTAMINATION` y `NOTIFY_MIN_SEVERITY` si hay demasiado ruido) — para eso está el informe semanal en PDF (`GET /api/reports/weekly`).
 
 ---
 
