@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  sensor:
+    build:
+      context: .
+      dockerfile: sensor/Dockerfile
+    # network_mode: host es necesario para que Scapy vea el tráfico real
+    # de la interfaz del host (en una red bridge normal solo vería el
+    # tráfico interno del contenedor). Esto solo funciona en Linux; en
+    # Docker Desktop (Windows/Mac) el sensor no capturará tráfico del
+    # host real por limitaciones de la propia plataforma.
+    network_mode: host
+    cap_add:
+      - NET_ADMIN # necesario para iptables (bloqueo automático) y captura
+      - NET_RAW   # necesario para que Scapy abra sockets raw
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
