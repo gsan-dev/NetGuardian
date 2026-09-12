@@ -140,8 +140,12 @@ button:disabled {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   flex-wrap: wrap;
   gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .topbar h1 {
@@ -166,6 +170,12 @@ button:disabled {
 .ws-badge.ws-on {
   color: var(--ok);
   border-color: var(--ok);
+  animation: ws-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .ws-badge.ws-off {
@@ -190,6 +200,12 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.25rem 1.5rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover {
+  border-color: #475569;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .panel h2 {
@@ -229,6 +245,14 @@ th {
   text-transform: uppercase;
 }
 
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+  background-color: rgba(56, 189, 248, 0.06);
+}
+
 /* --- Alertas --- */
 
 .alerts-list {
@@ -240,6 +264,17 @@ th {
   gap: 0.6rem;
   max-height: 360px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.alerts-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.alerts-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
 }
 
 .alert {
@@ -247,6 +282,18 @@ th {
   padding: 0.6rem 0.85rem;
   border-left: 4px solid var(--border);
   background: var(--surface-alt);
+  animation: alert-in 0.25s ease;
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .alert-header {
